@@ -1,5 +1,7 @@
 
 
+use log::{info, warn, error};
+
 use winapi::shared::ifdef::NET_LUID;
 use winapi::shared::minwindef::{BOOL, FARPROC, HMODULE};
 use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
@@ -78,6 +80,16 @@ pub struct Wintun {
     pub send_packet: WintunSendPacket,
 }
 
+unsafe extern "C" fn wintun_logger_cb(level: LoggerLevel, _time: DWORD64, message: LPCWSTR) {
+    let message = crate::util::decode_str(message).into_string().unwrap();
+
+    match level {
+        LoggerLevel::Info => info!("{}", message),
+        LoggerLevel::Warn => warn!("{}", message),
+        LoggerLevel::Error => error!("{}", message),
+    }
+}
+
 impl Wintun {
     pub fn new() -> Wintun {
         use std::ffi::OsStr;
@@ -100,7 +112,7 @@ impl Wintun {
             }};
         }
 
-        Wintun {
+        let wintun = Wintun {
             lib: lib,
             create_adapter: load_func!(lib, WintunCreateAdapter),
             open_adapter: load_func!(lib, WintunOpenAdapter),
@@ -116,7 +128,13 @@ impl Wintun {
             release_receive_packet: load_func!(lib, WintunReleaseReceivePacket),
             allocate_send_packet: load_func!(lib, WintunAllocateSendPacket),
             send_packet: load_func!(lib, WintunSendPacket),
+        };
+
+        unsafe {
+            (wintun.set_logger)(wintun_logger_cb);
         }
+        
+        wintun
     }
 }
 

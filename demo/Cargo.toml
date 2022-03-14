@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 wintun = { path = "../wintun-rs" }
 uuid = { version = "*", features = [ "v4" ] }
+log = "0.4"
+simple_logger = "2.1.0"
